@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE sqlMap PUBLIC "-//ibatis.apache.org//DTD SQL Map 2.0//EN"
+    "http://ibatis.apache.org/dtd/sql-map-2.dtd">
+
+
+<sqlMap namespace="jobsController">
+	<!-- 현재 돌고 있는 JOB LIST 조회 -->
+	<select id="readRunningJobList" resultClass="java.util.HashMap" parameterClass="java.util.HashMap">
+		SELECT sid, job, TO_CHAR (this_date, 'yyyymmddHH24mi') AS this_date FROM dba_jobs_running
+	</select>
+	
+	<!-- SYSDATE로 끊을 JOB 정보 조회 -->
+	<select id="getJobPeriodInfo" resultClass="java.util.HashMap" parameterClass="java.util.HashMap">
+	<![CDATA[
+		SELECT 
+			job_id, closedate, systemdate, sid,
+			CASE 
+			WHEN closedate < systemdate THEN 'Y' ELSE 'N' 
+			END AS closeyn
+		FROM (SELECT job_id, TO_CHAR (thisdate + NUMTODSINTERVAL (period, 'MINUTE'), 'yyyymmddhh24mi') AS closedate, TO_CHAR (SYSDATE, 'yyyymmddhh24mi') AS systemdate, sid, period
+				FROM (SELECT job_id, period, #SID# AS sid, TO_DATE (#THIS_DATE#, 'yyyymmddhh24mi') AS thisdate
+						FROM tb_job_control_preiod
+						WHERE job_id = #JOB#))
+	]]>
+	</select>
+	<!-- JOB SESSION 정보 조회 -->
+	<select id="getSessionInfo" resultClass="java.util.HashMap" parameterClass="java.util.HashMap">
+		SELECT sid, serial## FROM v$$session WHERE sid = #SID#
+	</select>
+	
+	<!-- SESSION ALTER문 (종료) -->
+	<update id="closeSession" parameterClass="java.lang.String">
+		alter system kill session '$text$' immediate
+	</update>
+</sqlMap>
